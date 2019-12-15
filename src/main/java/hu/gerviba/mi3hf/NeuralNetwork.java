@@ -3,6 +3,7 @@ package hu.gerviba.mi3hf;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 import static hu.gerviba.mi3hf.Main.PRODUCTION;
 
@@ -13,8 +14,7 @@ import static hu.gerviba.mi3hf.Main.PRODUCTION;
  */
 public final class NeuralNetwork {
 
-    private final double SCALING_FACTOR = 185.0 * 2; // 185.0 is the max
-    private final double LEARNING_RATE = 0.005;
+    private final double LEARNING_RATE = 0.01;
 
     Neuron[] inputNeurons;
     Neuron[][] hiddenNeurons;
@@ -46,20 +46,27 @@ public final class NeuralNetwork {
 
         for (int i = 0; i < withIteration; i++) {
             for (DataLine sample : data) {
+
+//            DataLine sample = data.get(0);
+//            {
                 forwardPropagation(sample);
                 backPropagation(sample);
 
+                double expected = normalized(sample.y, normalMin.y, normalMax.y);
+                double result = outputNeurons[0].activation;
+//                System.out.printf("%5.5f %5.5f %5.5f\n", expected - result, expected, result);
             }
+
             if (!PRODUCTION)
                 System.out.println("Iteration " + i + " happened");
 
 
-            for (int layer = 0; layer < hiddenLayers; layer++) {
-                for (int j = 0; j < nodesPerLayer; j++)
-                    System.out.print(String.format("%3.5f, ", hiddenNeurons[layer][j].weights[0]));
-                System.out.println();
-            }
-            System.out.println("\n!! -> " + outputNeurons[0].output);
+//            for (int layer = 0; layer < hiddenLayers; layer++) {
+//                for (int j = 0; j < nodesPerLayer; j++)
+//                    System.out.print(String.format("%3.5f, ", hiddenNeurons[layer][j].weights[0]));
+//                System.out.println();
+//            }
+//            System.out.println("\n!! -> " + outputNeurons[0].activation);
 //            System.out.println(Arrays.asList(inputNeurons));
 //            return;
         }
@@ -76,24 +83,56 @@ public final class NeuralNetwork {
         for (int layerIndex = 0; layerIndex < hiddenLayers; layerIndex++) {
             for (Neuron current : hiddenNeurons[layerIndex]) {
                 // MATH: Z_j(L)
-                double Zj = 0; // MATH: 0 can be replaced by BIAS_j
+                double Zj = current.bias;
 
-                // MATH: A_i(L-1) = output of the previous layer node
+                // MATH: A_i(L-1) = activation of the previous layer node
                 // MATH: sum of [ W_ji(L) * A_i(L-1) ] when i @ edges
                 for (Neuron previous : current.backward)
-                    Zj = previous.output * previous.weights[current.indexInItsLayer];
-                current.input = Zj;
-                current.output = sigmoidActivationFunction(Zj);
+                    Zj += previous.activation * previous.weights[current.indexInItsLayer];
+                current.zSum = Zj;
+                current.activation = sigmoidActivationFunction(Zj);
 
             }
         }
 
-        // The same thing for the output
-        double Zj = 0;
-        for (Neuron prevous : outputNeurons[0].backward)
-            Zj = prevous.output * prevous.weights[outputNeurons[0].indexInItsLayer];
-        outputNeurons[0].input = Zj;
-        outputNeurons[0].output = sigmoidActivationFunction(Zj);
+        // The same thing for the activation
+        double Zj = outputNeurons[0].bias;
+        for (Neuron previous : outputNeurons[0].backward) {
+            Zj += previous.activation * previous.weights[outputNeurons[0].indexInItsLayer];
+            double C0 = square(outputNeurons[0].activation - normalized(sample.y, normalMin.y, normalMax.y));
+//            System.out.println(C0);
+        }
+        outputNeurons[0].zSum = Zj;
+        outputNeurons[0].activation = sigmoidActivationFunction(Zj);
+    }
+
+    private void backPropagation(DataLine sample) {
+        outputNeurons[0].costPerActivationDerivative = 2 * (outputNeurons[0].activation - normalized(sample.y, normalMin.y, normalMax.y));
+        double activationPerZDerivative = outputNeurons[0].activation * (1.0 - outputNeurons[0].activation);
+
+        for (Neuron previous : hiddenNeurons[hiddenLayers - 1]) {
+            double zPerWeightsDerivative = previous.activation;
+            previous.errorDerivatives[outputNeurons[0].indexInItsLayer] =
+                    outputNeurons[0].costPerActivationDerivative * activationPerZDerivative * zPerWeightsDerivative;
+
+            previous.weights[outputNeurons[0].indexInItsLayer] -= LEARNING_RATE * previous.errorDerivatives[outputNeurons[0].indexInItsLayer];
+        }
+
+        for (int layerIndex = hiddenLayers - 2; layerIndex >= 0; layerIndex--) {
+            for (Neuron current : hiddenNeurons[layerIndex]) {
+
+                current.costPerActivationDerivative = 2 * (current.activation - normalized(sample.y, normalMin.y, normalMax.y));
+                double currentActivationPerZDerivative = current.activation * (1.0 - current.activation);
+
+                for (Neuron next : current.forward) {
+                    double zPerWeightsDerivative = current.activation;
+                    current.errorDerivatives[next.indexInItsLayer] =
+                            next.costPerActivationDerivative * currentActivationPerZDerivative * zPerWeightsDerivative;
+
+                    current.weights[next.indexInItsLayer] -= LEARNING_RATE * current.errorDerivatives[next.indexInItsLayer];
+                }
+            }
+        }
     }
 
     private double normalized(double in, double min, double max) {
@@ -104,74 +143,11 @@ public final class NeuralNetwork {
         return (in / normalFactor) * (max - min) + min;
     }
 
-    private void backPropagation(DataLine sample) {
-        // MATH: E = 1/2 * (Y_target - Y_output)^2
-        // MATH dE/dY_output | dE_total/d_out_o1
-        outputNeurons[0].deltaY = outputNeurons[0].output - normalized(sample.y, normalMin.y, normalMax.y);
-
-        // MATH: dE/dX_output = d/dx * f(x) * dE/dY | d_out_o1/d_net_o1 * dE_total/d_out_o1
-        double fX = outputNeurons[0].output; //sigmoidActivationFunction(outputNeurons[0].inputNeurons);
-        outputNeurons[0].deltaX = fX * (1.0 - fX) * outputNeurons[0].deltaY;
-
-        for (Neuron current : hiddenNeurons[hiddenLayers - 1]) {
-            for (Neuron next : current.forward) {
-                // MATH: d_out_o1/d_net_o1 * dE_total/d_out_o1 * out_h1
-                current.errorDerivatives[next.indexInItsLayer] = current.output * next.deltaX;
-            }
-        }
-
-        for (int layerIndex = hiddenLayers - 2; layerIndex >= 0; layerIndex--) {
-            for (Neuron current : hiddenNeurons[layerIndex]) {
-                // MATH: Null to calc new sum
-                current.deltaY = 0;
-
-                // MATH: errorDerivatives[i] = Yi * dE/dXj
-                for (Neuron next : current.forward) {
-
-                    double dCost_dWl = next.deltaY;
-
-                    // dOut_current/dNet_current
-                    double dAl_dZl = next.output * (1 - next.output);
-
-                    // current.output = i1
-                    current.errorDerivatives[next.indexInItsLayer] = current.output * dAl_dZl * dCost_dWl; //current.output * next.deltaX;
-
-                    // MATH: dE/dY = sum of [ dE/dYi * W_ji(L) ] where i @ forward edges
-                    current.deltaY += current.weights[next.indexInItsLayer] * next.deltaY;
-                }
-
-                // MATH: dE/dX_output = d/dx * f(x) * dE/dY
-                double fXi = current.output; // sigmoidActivationFunction(current.inputNeurons)
-                current.deltaX = fXi * (1.0 - fXi) * current.deltaY;
-
-                // MATH:
-                for (int edgeIndex = 0; edgeIndex < current.weights.length; edgeIndex++) {
-                    current.weights[edgeIndex] -= LEARNING_RATE * current.errorDerivatives[edgeIndex];
-                }
-            }
-        }
-
-        // Update inputs as well
-        for (Neuron current : inputNeurons) {
-            for (Neuron next : current.forward) {
-                double dCost_dWl = next.deltaY;
-                double dAl_dZl = next.output * (1 - next.output);
-                current.errorDerivatives[next.indexInItsLayer] = current.output * dAl_dZl * dCost_dWl;
-
-                current.errorDerivatives[next.indexInItsLayer] = current.output * next.deltaX;
-
-            }
-            for (int edgeIndex = 0; edgeIndex < current.weights.length; edgeIndex++) {
-                current.weights[edgeIndex] -= LEARNING_RATE * current.errorDerivatives[edgeIndex];
-            }
-        }
-
-    }
-
     private void wireNetwork() {
         // TODO: Init INPUT layer
         for (int inputNodeIndex = 0; inputNodeIndex < inputNums; inputNodeIndex++) {
             inputNeurons[inputNodeIndex].forward = hiddenNeurons[0];
+            inputNeurons[inputNodeIndex].bias = 1.0;
         }
 
         // TODO: Init HIDDEN layers
@@ -229,7 +205,7 @@ public final class NeuralNetwork {
         double error = 0;
         for (DataLine data : testInput) {
             forwardPropagation(data);
-            double result = denormalized(outputNeurons[0].output, normalMin.y, normalMax.y);
+            double result = denormalized(outputNeurons[0].activation, normalMin.y, normalMax.y);
 
             error += (result - data.y) * (result - data.y);
 

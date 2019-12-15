@@ -13,7 +13,17 @@ public class Main {
     static final int TRAIN_DATA = 17011;
     static final int INPUT_DATA = 4252;
     static final int DATA_LENGTH = 81;
-    public static final boolean PRODUCTION = System.getProperty("PROD", "true").equals("true");
+    public static final boolean PRODUCTION;
+
+    static {
+        boolean prod = true;
+        try {
+            prod = System.getProperty("PROD", "true").equals("true");
+        } catch (Throwable e) {
+        } finally {
+            PRODUCTION = prod;
+        }
+    }
 
     public static void main(String[] args) {
         readInput(System.in);

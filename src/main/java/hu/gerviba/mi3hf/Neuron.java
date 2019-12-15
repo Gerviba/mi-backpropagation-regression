@@ -5,19 +5,23 @@ import java.util.Random;
 
 public final class Neuron {
 
-    private static final Random RANDOM = new Random();
+    static final Random RANDOM = new Random();
 
-    final int indexInItsLayer;
-    final double[] errorDerivatives;
-    double input; // x, Zj(L)
-    double output; // y, a(L) = o( Zj(L) )
-    double deltaY; // MATH: dE/dY
-    double deltaX; // MATH: dE/dX
+    final int indexInItsLayer; // subscript
+    final double[] errorDerivatives; // relevant derivatives | dCost/dWeight
+    double zSum; // x, Zj(L)
+    double activation; // y, activation(L) = o( Zj(L) )
+    double costPerActivationDerivative; // dC0/dActivation(L)
+    double bias;
     Neuron[] backward;
     Neuron[] forward;
 
     // Changes trough the iterations:
     final double[] weights;
+
+    {
+        bias = (RANDOM.nextDouble() * 2.0 - 1.0) / 1.0;
+    }
 
     public Neuron() {
         this.indexInItsLayer = 0;
@@ -30,17 +34,17 @@ public final class Neuron {
         this.weights = new double[nextLayerNodes];
         this.errorDerivatives = new double[nextLayerNodes];
         for (int i = 0; i < nextLayerNodes; i++)
-            weights[i] = (RANDOM.nextDouble() - 0.0) / 1.0;
+            weights[i] = (RANDOM.nextDouble() * 2.0 - 1.0) / 1.0;
     }
 
     public void setOutputManually(double value) {
-        output = value;
+        activation = value;
     }
 
     @Override
     public String toString() {
         return "Neuron{" +
-                "output=" + output +
+                "activation=" + activation +
                 ", weights=" + Arrays.toString(weights) +
                 "}\n";
     }
