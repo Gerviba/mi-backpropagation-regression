@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import static hu.gerviba.mi3hf.Main.PRODUCTION;
+
 /**
  * Based on: https://google-developers.appspot.com/machine-learning/crash-course/backprop-scroll/
  * and https://www.youtube.com/watch?v=tIeHLnjs5U8
@@ -11,8 +13,8 @@ import java.util.List;
  */
 public final class NeuralNetwork {
 
-    private final double SCALING_FACTOR = 185.0;
-    private final double LEARNING_RATE = 0.8;
+    private final double SCALING_FACTOR = 185.0 * 2; // 185.0 is the max
+    private final double LEARNING_RATE = 0.01;
 
     Neuron[] inputNeurons;
     Neuron[][] hiddenNeurons;
@@ -23,6 +25,10 @@ public final class NeuralNetwork {
     private final int hiddenLayers;
     private final int nodesPerLayer;
 
+    private DataLine normalMax;
+    private DataLine normalMin;
+    private double normalFactor;
+
     public NeuralNetwork(int inputNums, int hiddenLayers, int nodesPerLayer) {
         assert inputNums > 0;
         assert hiddenLayers > 0;
@@ -31,11 +37,12 @@ public final class NeuralNetwork {
         this.inputNums = inputNums;
         this.hiddenLayers = hiddenLayers;
         this.nodesPerLayer = nodesPerLayer;
+
+        initNetwork();
+        wireNetwork();
     }
 
     public void train(List<DataLine> data, int withIteration) {
-        initNetwork();
-        wireNetwork();
 
         for (int i = 0; i < withIteration; i++) {
             for (DataLine sample : data) {
@@ -43,7 +50,8 @@ public final class NeuralNetwork {
                 backPropagation(sample);
 
             }
-//            System.out.println("Iteration " + i + " happened");
+//            if (!PRODUCTION)
+//                System.out.println("Iteration " + i + " happened");
 
 
 //            for (int layer = 0; layer < hiddenLayers; layer++) {
@@ -56,12 +64,13 @@ public final class NeuralNetwork {
 //            return;
         }
 
-//        System.out.println("Learning complete");
+        if (!PRODUCTION)
+            System.out.println("Learning complete");
     }
 
     private void forwardPropagation(DataLine sample) {
         for (int i = 0; i < inputNums; i++)
-            inputNeurons[i].setOutputManually(sample.x[i] / 200.0);
+            inputNeurons[i].setOutputManually(normalized(sample.x[i], normalMin.x[i], normalMax.x[i]));
 
         // MATH: L = layer index
         for (int layerIndex = 0; layerIndex < hiddenLayers; layerIndex++) {
@@ -85,6 +94,10 @@ public final class NeuralNetwork {
             Zj = prevous.output * prevous.weights[outputNeurons[0].indexInItsLayer];
         outputNeurons[0].input = Zj;
         outputNeurons[0].output = sigmoidActivationFunction(Zj);
+    }
+
+    private double normalized(double x, double min, double max) {
+        return ((x - min) / (max - min)) * normalFactor;
     }
 
     private void backPropagation(DataLine sample) {
@@ -188,12 +201,22 @@ public final class NeuralNetwork {
     }
 
     public void testResults(List<DataLine> testInput) {
+        double error = 0;
         for (DataLine data : testInput) {
             forwardPropagation(data);
             double result = SCALING_FACTOR * outputNeurons[0].output;
-            System.out.println(result);
-//            System.out.printf("%4.2f\t%4.2f\tdiff = %4.5f\n", result, data.y, data.y - result);
+
+            error += (result - data.y) * (result - data.y);
+
+            if (PRODUCTION)
+                System.out.println(result);
+            else
+                System.out.printf("%4.2f\t%4.2f\tdiff = %4.5f\n", result, data.y, data.y - result);
         }
+
+        error = Math.sqrt((1.0 / Main.INPUT_DATA) * error);
+        if (!PRODUCTION)
+            System.out.println("RMSE: " + error);
     }
 
     public static double sigmoidActivationFunction(double x) {
@@ -202,5 +225,16 @@ public final class NeuralNetwork {
 
     public static double square(double x) {
         return x * x;
+    }
+
+    public void setupNormalisation(DataLine max, DataLine min, double factor) {
+        this.normalMax = max;
+        this.normalMin = min;
+        this.normalFactor = factor;
+
+        if (!PRODUCTION) {
+            System.out.println(max);
+            System.out.println(min);
+        }
     }
 }

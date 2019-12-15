@@ -3,7 +3,7 @@ package hu.gerviba.mi3hf;
 import java.util.Arrays;
 import java.util.Random;
 
-public class Neuron {
+public final class Neuron {
 
     private static final Random RANDOM = new Random();
 
@@ -30,7 +30,7 @@ public class Neuron {
         this.weights = new double[nextLayerNodes];
         this.errorDerivatives = new double[nextLayerNodes];
         for (int i = 0; i < nextLayerNodes; i++)
-            weights[i] = (RANDOM.nextDouble() - 0.0) / 2.0;
+            weights[i] = (RANDOM.nextDouble() - 0.0) / 1.0;
     }
 
     public void setOutputManually(double value) {
