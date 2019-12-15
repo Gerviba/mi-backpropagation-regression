@@ -25,7 +25,7 @@ public class Main {
             List<DataLine> dataset = readData(in, TRAIN_DATA);
 
             NeuralNetwork neuralNetwork = new NeuralNetwork(DATA_LENGTH, 2, 80);
-            normalize(dataset, neuralNetwork, 1.0);
+            normalize(dataset, neuralNetwork, 0.7);
 
             if (PRODUCTION) {
                 double[] yValues = Stream.generate(in::next)
@@ -47,9 +47,12 @@ public class Main {
 
     private static void normalize(List<DataLine> dataset, NeuralNetwork neuralNetwork, double factor) {
         DataLine max = new DataLine(new double[DATA_LENGTH + 1]);
+
         double[] minData = new double[DATA_LENGTH + 1];
-        Arrays.fill(minData, 100000);
+        final int HUGE_NUMBER = 100000;
+        Arrays.fill(minData, HUGE_NUMBER);
         DataLine min = new DataLine(minData);
+
         for (DataLine data : dataset) {
             for (int i = 0; i < DATA_LENGTH; i++) {
                 if (data.x[i] > max.x[i])
@@ -57,6 +60,11 @@ public class Main {
                 if (data.x[i] < min.x[i])
                     min.x[i] = data.x[i];
             }
+
+            if (data.y > max.y)
+                max.y = data.y;
+            if (data.y < min.y)
+                min.y = data.y;
         }
 
         neuralNetwork.setupNormalisation(max, min, factor);

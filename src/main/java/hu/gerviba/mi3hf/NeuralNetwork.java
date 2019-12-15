@@ -50,16 +50,16 @@ public final class NeuralNetwork {
                 backPropagation(sample);
 
             }
-//            if (!PRODUCTION)
-//                System.out.println("Iteration " + i + " happened");
+            if (!PRODUCTION)
+                System.out.println("Iteration " + i + " happened");
 
 
-//            for (int layer = 0; layer < hiddenLayers; layer++) {
-//                for (int j = 0; j < nodesPerLayer; j++)
-//                    System.out.print(String.format("%3.5f, ", hiddenNeurons[layer][j].weights[0]));
-//                System.out.println();
-//            }
-//            System.out.println("\n!! -> " + outputNeurons[0].output);
+            for (int layer = 0; layer < hiddenLayers; layer++) {
+                for (int j = 0; j < nodesPerLayer; j++)
+                    System.out.print(String.format("%3.5f, ", hiddenNeurons[layer][j].weights[0]));
+                System.out.println();
+            }
+            System.out.println("\n!! -> " + outputNeurons[0].output);
 //            System.out.println(Arrays.asList(inputNeurons));
 //            return;
         }
@@ -96,14 +96,18 @@ public final class NeuralNetwork {
         outputNeurons[0].output = sigmoidActivationFunction(Zj);
     }
 
-    private double normalized(double x, double min, double max) {
-        return ((x - min) / (max - min)) * normalFactor;
+    private double normalized(double in, double min, double max) {
+        return ((in - min) / (max - min)) * normalFactor;
+    }
+
+    private double denormalized(double in, double min, double max) {
+        return (in / normalFactor) * (max - min) + min;
     }
 
     private void backPropagation(DataLine sample) {
         // MATH: E = 1/2 * (Y_output - Y_target)
         // MATH dE/dY_output
-        outputNeurons[0].deltaY = outputNeurons[0].output - (sample.y / SCALING_FACTOR);
+        outputNeurons[0].deltaY = outputNeurons[0].output - normalized(sample.y, normalMin.y, normalMax.y);
 
         // MATH: dE/dX_output = d/dx * f(x) * dE/dY
         double fX = outputNeurons[0].output; //sigmoidActivationFunction(outputNeurons[0].inputNeurons);
@@ -204,7 +208,7 @@ public final class NeuralNetwork {
         double error = 0;
         for (DataLine data : testInput) {
             forwardPropagation(data);
-            double result = SCALING_FACTOR * outputNeurons[0].output;
+            double result = denormalized(outputNeurons[0].output, normalMin.y, normalMax.y);
 
             error += (result - data.y) * (result - data.y);
 
