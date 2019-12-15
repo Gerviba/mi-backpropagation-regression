@@ -10,7 +10,7 @@ public final class Neuron {
     final int indexInItsLayer;
     final double[] errorDerivatives;
     double input; // x, Zj(L)
-    double output; // y
+    double output; // y, a(L) = o( Zj(L) )
     double deltaY; // MATH: dE/dY
     double deltaX; // MATH: dE/dX
     Neuron[] backward;

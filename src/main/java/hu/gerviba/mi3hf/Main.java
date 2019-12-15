@@ -38,7 +38,7 @@ public class Main {
                 }
             }
 
-            neuralNetwork.train(dataset, 100);
+            neuralNetwork.train(dataset, 50);
 
             List<DataLine> testInput = readData(in, INPUT_DATA);
             neuralNetwork.testResults(testInput);
