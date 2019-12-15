@@ -4,4 +4,5 @@ out/
 *.iml
 *.class
 *.huge.dat
+*.zip
 

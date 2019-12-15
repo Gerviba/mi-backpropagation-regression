@@ -11,6 +11,7 @@ public class Main {
 
     private static final int TRAIN_DATA = 17011;
     private static final int INPUT_DATA = 4252;
+    public static final boolean PRODUCTION = true;
 
     public static void main(String[] args) {
         readInput(System.in);
@@ -21,8 +22,19 @@ public class Main {
             in.useDelimiter("\n");
             List<DataLine> dataset = readData(in, TRAIN_DATA);
 
-            NeuralNetwork neuralNetwork = new NeuralNetwork(81, 3, 20);
-            neuralNetwork.train(dataset);
+            if (PRODUCTION) {
+                double[] yValues = Stream.generate(in::next)
+                        .limit(TRAIN_DATA)
+                        .filter(line -> !line.isEmpty())
+                        .mapToDouble(Double::parseDouble)
+                        .toArray();
+                for (int i = 0; i < yValues.length; i++) {
+                    dataset.get(i).y = yValues[i];
+                }
+            }
+
+            NeuralNetwork neuralNetwork = new NeuralNetwork(81, 1, 81);
+            neuralNetwork.train(dataset, 200);
 
             List<DataLine> testInput = readData(in, INPUT_DATA);
             neuralNetwork.testResults(testInput);

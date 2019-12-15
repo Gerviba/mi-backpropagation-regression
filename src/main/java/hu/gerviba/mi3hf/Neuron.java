@@ -1,5 +1,6 @@
 package hu.gerviba.mi3hf;
 
+import java.util.Arrays;
 import java.util.Random;
 
 public class Neuron {
@@ -7,14 +8,19 @@ public class Neuron {
     private static final Random RANDOM = new Random();
 
     final int indexInItsLayer;
-    final double[] weights;
     final double[] errorDerivatives;
-    double output;
+    double input; // x, Zj(L)
+    double output; // y
+    double deltaY; // MATH: dE/dY
+    double deltaX; // MATH: dE/dX
     Neuron[] backward;
     Neuron[] forward;
 
-    public Neuron(int indexInItsLayer) {
-        this.indexInItsLayer = indexInItsLayer;
+    // Changes trough the iterations:
+    final double[] weights;
+
+    public Neuron() {
+        this.indexInItsLayer = 0;
         this.weights = new double[0];
         this.errorDerivatives = new double[0];
     }
@@ -24,11 +30,18 @@ public class Neuron {
         this.weights = new double[nextLayerNodes];
         this.errorDerivatives = new double[nextLayerNodes];
         for (int i = 0; i < nextLayerNodes; i++)
-            weights[i] = RANDOM.nextDouble();
+            weights[i] = (RANDOM.nextDouble() - 0.0) / 2.0;
     }
 
     public void setOutputManually(double value) {
         output = value;
     }
 
+    @Override
+    public String toString() {
+        return "Neuron{" +
+                "output=" + output +
+                ", weights=" + Arrays.toString(weights) +
+                "}\n";
+    }
 }
