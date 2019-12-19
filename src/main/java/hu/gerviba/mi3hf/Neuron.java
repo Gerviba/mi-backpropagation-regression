@@ -10,13 +10,12 @@ public final class Neuron {
     final int indexInItsLayer; // subscript
     final double[] errorDerivatives; // relevant derivatives | dCost/dWeight
     double zSum; // x, Zj(L)
-    double activation; // y, activation(L) = o( Zj(L) )
+    double activation; // activation(L) = o( Zj(L) )
     double costPerActivationDerivative; // dC0/dActivation(L)
     double bias;
     Neuron[] backward;
     Neuron[] forward;
 
-    // Changes trough the iterations:
     final double[] weights;
 
     {
@@ -46,6 +45,7 @@ public final class Neuron {
         return "Neuron{" +
                 "activation=" + activation +
                 ", weights=" + Arrays.toString(weights) +
+                ", bias=" + bias +
                 "}\n";
     }
 }

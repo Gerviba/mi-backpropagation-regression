@@ -35,8 +35,6 @@ public class Main {
             List<DataLine> dataset = readData(in, TRAIN_DATA);
 
             NeuralNetwork neuralNetwork = new NeuralNetwork(DATA_LENGTH, 2, 80);
-            normalize(dataset, neuralNetwork, 0.7);
-
             if (PRODUCTION) {
                 double[] yValues = Stream.generate(in::next)
                         .limit(TRAIN_DATA)
@@ -48,7 +46,8 @@ public class Main {
                 }
             }
 
-            neuralNetwork.train(dataset, 50);
+            normalize(dataset, neuralNetwork, 0.7);
+            neuralNetwork.train(dataset, 100000);
 
             List<DataLine> testInput = readData(in, INPUT_DATA);
             neuralNetwork.testResults(testInput);
